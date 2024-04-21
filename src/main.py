@@ -209,7 +209,7 @@ def main():
     if not check_config(config):
         logging.error('Configuration file is not valid.')
         exit_error()
-    dos = DOS(config=config, duration=10)
+    dos = DOS(config=config)
     dos.attack()
 
 if __name__ == '__main__':
