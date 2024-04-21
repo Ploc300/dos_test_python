@@ -2,16 +2,17 @@
 This tool is only for testing purposes.
 
 Usage:
-    main.py --config-file <config_file>
+    %s <config_file>
+    %s -h | --help
 
 Options:
     -h --help                   Show this screen.
-    --config-file <config_file> Path to the configuration file.
 """
 
 # ===== Imports ===== #
 # Local imports
 import os
+import sys
 import logging
 from json import (load,
                   JSONDecodeError)
@@ -21,9 +22,19 @@ from typing import Optional
 # from socket import (socket,
 #                     AF_INET,
 #                     SOCK_STREAM,)
+from docopt import docopt
 
 # ===== Constants ===== #
+ARGS: list[str] = sys.argv
 CONFIG_FILE: str | None = None
+LOGGING: dict[str, str] = {
+    'level': 'DEBUG',
+    'format': '%(asctime)s - %(levelname)s - %(message)s'
+}
+
+# ===== Logging ===== #
+logging.basicConfig(level=LOGGING['level'],
+                    format=LOGGING['format'])
 
 # ===== Functions ===== #
 def load_config(config_file: Optional[str] = 'config.json', *,
@@ -74,13 +85,13 @@ def check_config(config: dict) -> tuple[bool, list[str]]:
         return False
 
     if 'host' not in config:
-        logging.error('Configuration file does not contain a host.')       
+        logging.error('Configuration file does not contain a host.')
         _return = False
 
     if 'port' not in config:
         logging.error('Configuration file does not contain a port.')
         _return = False
-    
+
     if 'payload' not in config:
         logging.error('Configuration file does not contain a payload. (It can be empty)')
         _return = False
@@ -89,26 +100,34 @@ def check_config(config: dict) -> tuple[bool, list[str]]:
 
 def param_handler() -> None:
     """Handle the parameters passed to the script.
-
-    Raises:
-        NotImplementedError: If the function is not implemented.
     """
-    raise NotImplementedError
+    global CONFIG_FILE
+
+    args: list[str] = ARGS[1:]
+    logging.debug('Arguments: %s', args)
+
+    if not args:
+        logging.error('No arguments passed.')
+        return
+    
+    if len(args) != 1:
+        logging.error('Invalid number of arguments. Must be only one. Either the configuration file or the help flag.')
+        return
+    
+    if args[0] in ['-h', '--help']:
+        print(__doc__ % (ARGS[0], ARGS[0]))
+        sys.exit(0)
+
+    
 
 # ===== Class ===== #
 class DOS:
     """Main class for the DOS attack.
     """
-    def __init__(self) -> None:
-        raise NotImplementedError
-
 
 # ===== Main ===== #
 def main():
     """Main function for the DOS attack tool.
-
-    Raises:
-        NotImplementedError: If the function is not implemented.
     """
     param_handler()
     config = load_config(CONFIG_FILE)
