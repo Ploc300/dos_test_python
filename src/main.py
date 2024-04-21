@@ -16,27 +16,36 @@ import sys
 import logging
 from json import (load,
                   JSONDecodeError)
-from typing import Optional
+from typing import (Optional,
+                    NoReturn)
 
 # Third party imports
 # from socket import (socket,
 #                     AF_INET,
 #                     SOCK_STREAM,)
-from docopt import docopt
 
 # ===== Constants ===== #
 ARGS: list[str] = sys.argv
-CONFIG_FILE: str | None = None
 LOGGING: dict[str, str] = {
     'level': 'DEBUG',
-    'format': '%(asctime)s - %(levelname)s - %(message)s'
+    'format': '[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s',
+    'datefmt': '%Y-%m-%d %H:%M:%S',
+    'stream': sys.stdout
 }
 
 # ===== Logging ===== #
 logging.basicConfig(level=LOGGING['level'],
-                    format=LOGGING['format'])
+                    format=LOGGING['format'],
+                    datefmt=LOGGING['datefmt'],
+                    stream=LOGGING['stream'])
 
 # ===== Functions ===== #
+def exit_error() -> NoReturn:
+    """Exit the script with an error message.
+    """
+    logging.exception('Fatal error, exiting')
+    os._exit(1)
+
 def load_config(config_file: Optional[str] = 'config.json', *,
                 encoding: Optional[str] = 'utf-8') -> dict:
     """Load the configuration file.
@@ -56,7 +65,7 @@ def load_config(config_file: Optional[str] = 'config.json', *,
 
     if not os.path.exists(config_file):
         logging.error('Configuration file %s does not exist.', config_file)
-        raise FileNotFoundError
+        exit_error()
 
     with open(config_file, 'r', encoding=encoding) as file:
         try:
@@ -98,27 +107,29 @@ def check_config(config: dict) -> tuple[bool, list[str]]:
 
     return _return
 
-def param_handler() -> None:
+def param_handler() -> str:
     """Handle the parameters passed to the script.
     """
-    global CONFIG_FILE
 
     args: list[str] = ARGS[1:]
     logging.debug('Arguments: %s', args)
 
     if not args:
         logging.error('No arguments passed.')
-        return
-    
+        exit_error()
+
     if len(args) != 1:
-        logging.error('Invalid number of arguments. Must be only one. Either the configuration file or the help flag.')
-        return
-    
+        logging.error('Invalid number of arguments. Must be only one.'
+                      'Either the configuration file or the help flag.')
+        exit_error()
+
     if args[0] in ['-h', '--help']:
         print(__doc__ % (ARGS[0], ARGS[0]))
         sys.exit(0)
 
-    
+    return args[0]
+
+
 
 # ===== Class ===== #
 class DOS:
@@ -129,8 +140,8 @@ class DOS:
 def main():
     """Main function for the DOS attack tool.
     """
-    param_handler()
-    config = load_config(CONFIG_FILE)
+    config_file: str = param_handler()
+    config = load_config(config_file)
     if not check_config(config):
         logging.error('Configuration file is not valid.')
         return
